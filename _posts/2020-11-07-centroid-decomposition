@@ -1,0 +1,185 @@
+---
+layout: post
+title: 'Centroid Decomposition'
+tags: [algorithms]
+---
+
+When solving graph theory related problems, a type of question that one might encounter involves dealing with queries on paths. One such approach that can be used to solve these problems efficiently is a technique called centroid decomposition.
+
+<!-- more -->
+
+We first define what **the centroid of a tree** is.
+
+**Centroid**: In a tree of $$N$$ nodes, the centroid is the node such that when it is removed, all of the subtrees created contain no more than $$\frac{N}{2}$$ nodes.
+
+### The Algorithm
+
+This algorithm is recursive and can follow a structure similar to:
+```
+find the centroid of the tree
+for each subtree from the centroid
+    process the subtree
+    perform calculations with already processed subtrees
+    update already processed subtree with current subtree
+mark centroid as removed
+repeat on all subtrees of the centroid
+```
+
+We can consider any two arbitary nodes $$A$$ and $$B$$ in our tree. We let $$C$$ be a node in the path from $$A$$ to $$B$$.
+The path between $$A$$ and $$B$$ can then be seen as the path from $$A$$ to $$C$$ concatenated with the path from $$C$$ to $$B$$.
+
+This allows us to perform certain operations faster as larger paths can be formed by matching smaller paths together.
+
+### The Problem
+
+An example problem that this can be applied to is [IOI '11 P2 - Race](https://dmoj.ca/problem/ioi11p2).
+
+The problem in short:
+
+Given a tree of $$N$$ nodes with a length $$L_i$$ on each edge, and an integer $$K$$, what is the minimum number of edges required to form a path of length $$K$$.
+
+$$1 \le N \le 200\,000, 1 \le K \le 1\,000\,000, 0 \le L_i \le 1\,000\,000$$
+
+### Stepping through the Problem
+
+From Figure 3, the algorithm performs as follows:
+
+**Note:** Each pair in the following *Processing* and *Already Processed* arrays will contain pairs of $$(\text{number of edges}, \text{total length})$$, though for the code - a HashMap would be preferred here (the arrays are simply to better understand the algorithm). For each value in our *Processing* array, we want to know if there exists some value in our *Already Processed* array that compliments the current value to sum to $$K$$, which a HashMap can handle quite well.
+
+---
+
+Find the centroid of the tree = node $$0$$
+
+Going towards node $$1$$,
+
+*Processing* $$= [(1,3)]$$ | 
+*Already Processed* $$= [\,]$$ |
+
+
+Going towards node $$2$$,
+
+*Processing* $$= [(1,4), (2,9), (3, 13), (4, 19)]$$ |
+*Already Processed* $$= [(1,3)]$$ |
+
+By combining the path of length $$9$$ from the subtree we are processing with the path of length $$3$$ from the subtree we already processed, we can make a path of length $$12$$ using $$2 + 1 = 3$$ edges. This represents the path from node $$3$$ to node $$1$$.
+
+Going towards node $$6$$,
+
+*Processing* $$= [(1, 3), (2, 5), (2, 8), (3, 14), (3, 15)]$$ |
+*Already Processed* $$= [(1,3), (1,4), (2, 9), (3, 13), (4,19)]$$ |
+
+Another path can be made using $$(2, 8)$$ and $$(1, 4)$$ though this would also result in $$3$$ edges, which for this problem is not any better than the path we found above.
+
+We remove the centroid node (node $$0$$ in this case), and perform the same operation on all of the subtrees.
+
+The subtree containing node $$6$$, 
+
+Find the centroid of the tree = node $$8$$,
+
+Going towards node $$7$$,
+
+*Processing* $$= [(1,5), (2,7)]$$ |
+*Already Processed* $$= [\,]$$ |
+
+Going towards node $$10$$,
+
+*Processing* $$= [(1,7)]$$ |
+*Already Processed* $$= [(1,5), (2,7)]$$ |
+
+By combining the path of length $$7$$ with the path of length $$5$$, we can make a path of length $$12$$, which is the desired $$K$$. The number of edges on this path is $$1 + 1 = 2$$ edges, which turns out to be the minimum, after the algorithm has decomposed each of its subtrees.
+
+---
+
+### The code
+The graph will be represented as an adjacency list where $$\text{graph}[i]$$ is a list of nodes that node $$i$$ is connected to, along with the length of the edge.
+
+#### Getting the centroid
+We introduce two arrays,
+* $$\text{removedFromTree}[i]$$ - to keep track of whether or not node $$i$$ has been removed (after it has been processed as the centroid).
+* $$\text{sizeOfSubtree}[i]$$ - to store the size of the tree rooted at node $$i$$.
+
+```cpp
+void getSubtreeSize(int currentNode, int parentNode) {
+    sizeOfSubtree[currentNode] = 1;
+    for(auto &neighbour : graph[currentNode]) {
+        if (neighbour.node != parentNode && !removedFromTree[neighbour.node]) {
+            getSubtreeSize(neighbour.node, currentNode);
+            sizeOfSubtree[currentNode] += sizeOfSubtree[neighbour.node];
+        }
+    }
+}
+
+void getCenter(int currentNode, int parentNode, int totalNodes) {
+    for(auto &neighbour : graph[currentNode]) {
+        if (neighbour.node != parentNode && sizeOfSubtree[neighbour.node] * 2 > totalNodes && !removedFromTree[neighbour.node]) {
+            return getCenter(neighbour.node, currentNode, totalNodes);    
+        }
+    }
+    return currentNode;
+}
+```
+
+#### Finding the path with minimum edges
+We introduce two HashMaps to handle the matching of paths from the *Processing* values with the *Already Processed* values as mentioned in [Stepping through the Problem](#stepping-through-the-problem).
+* $$\text{map<int,int> processing}$$ - where the key is the length of the path and the value is the number of edges on the path.
+* $$\text{map<int,int> alreadyProcessed}$$ - same as above.
+
+```cpp
+void getPaths(int currentNode, int parentNode, int length, int edges) {
+    if (length == K) minEdges = min(minEdges, edges);
+    if (length > K) return;
+    if (processing.find(length) != processing.end()) {
+        processing[length] = min(processing[length], edges);
+    } else {
+        processing[length] = edges;
+    }
+    if (removedFromTree[currentNode]) return;
+    for (auto &neighbour : graph[currentNode]) {
+        if (neighbour.node != parentNode) {
+            getPaths(neighbour.node, currentNode, length + neighbour.length, edges + 1);
+        }
+    }
+}
+
+void solve(int currentNode) {
+    getSubtreeSize(currentNode, -1);
+    int centroid = getCenter(currentNode, -1, sizeOfSubtree[currentNode]);
+
+    for (auto &neighbour : graph[centroid]) {
+        if (removedFromTree[neighbour.node]) continue;
+        getPaths(neighbour.node, centroid, neighbour.length, 1);
+        // finding if a complementary path exists
+        for (auto &path : processing) {
+            int lengthNeeded = K - path.length;
+            if (alreadyProcessed.find(lengthNeeded) != alreadyProcessed.end()) {
+                minEdges = min(minEdges, path.edges + alreadyProcessed[lengthNeeded])
+            }
+        }
+        // updating alreadyProcessed with processing values
+        for (auto &path: processing) {
+            if (alreadyProcessed.find(path.length) != alreadyProcessed.end()) {
+                alreadyProcessed[path.length] = min(alreadyProcessed[path.length], path.edges);
+            } else {
+                alreadyProcessed[path.length] = path.edges;
+            }
+        }
+        processing.clear();
+    }
+
+    alreadyProcessed.clear();
+    removedFromTree[centroid] = true;
+    for (auto &neighbour : graph[centroid]) {
+        if (!removedFromTree[neighbour.node]) {
+            solve(neighbour.node);
+        }
+    }
+}
+```
+
+### Other Problems
+
+Some other problems that can be solved using centroid decomposition include:
+
+* [JOI '14 - Factories](https://dmoj.ca/problem/joi14p1)
+* [Summer Institute '17 Contest 3 P5 - Balanced Cycles](https://dmoj.ca/problem/si17c3p5)
+* [DMPG '19 G5 - Hunting the White Whale](https://dmoj.ca/problem/dmpg19g5)

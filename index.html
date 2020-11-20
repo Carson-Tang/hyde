@@ -12,9 +12,19 @@ title: Home
       </a>
     </h1>
 
-    <span class="post-date">{{ post.date | date_to_string }}</span>
+    {% include tags_for_page.html %}
 
-    {{ post.content }}
+    <span class="post-date">{{ post.date | date_to_string }} {{ tags_content }}
+      {% assign words = post.content | strip_html | number_of_words %}
+      - {{ words | divided_by: 75 | plus: 1 }} min read.
+    </span>
+
+    {% if post.content contains "<!-- more -->" %}
+      {{ post.content | split:"<!-- more -->" | first }}
+        <a href="{{ post.url }}">Read more...</a>
+      {% else %}
+        {{ post.content }}
+      {% endif %}
   </div>
   {% endfor %}
 </div>
