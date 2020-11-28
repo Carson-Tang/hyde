@@ -1,0 +1,264 @@
+---
+layout: post
+title: 'Solving Recurrences with Matrices'
+tags: [algorithms]
+---
+
+We look at some common dynamic programming problems, whose state transitions are linear recurrences, allowing us to optimize the solutions even further using matrix exponentation.
+
+* [Fibonacci Sequence](#fibonacci-sequence)
+* [String Counting](#string-counting)
+
+<!-- more -->
+
+### Binary Exponentation
+We first familarize ourselves with the method called *binary exponentation*.
+
+Suppose we wanted to calculate $$3^{100} (\text{mod } m)$$, where $$m = 10^9 + 7$$.
+
+#### Naive Approach
+We can multiply $$3 \times 3 \times 3 \dots 100$$ times.
+
+```python
+ans = 1
+mod = 1e9 + 7
+exponent = 100
+for i in range(exponent):
+    ans = (ans * 3) % mod
+```
+Though this can get slow quite quickly as the exponent increases, suppose if we wanted to find $$3^{10^{18}}$$, then looping $$10^{18}
+$$ times would be unreasonable.
+
+#### Binary Exponentation Approach
+Let us first convert $$100$$ to binary $$0b1100100$$ which is $$2^2 + 2^5 + 2^6 = 4 + 32 + 64 = 100$$.
+
+We then have $$3^{100} = 3^{2^2} \cdot 3^{2^5} \cdot 3^{2^6} = 3^{4} \cdot 3^{32} \cdot 3^{64}$$
+
+We also notice that 
+
+$$3^2 = 3 \cdot 3$$
+
+$$3^4 = 3^2 \cdot 3^2$$
+
+$$3^8 = 3^4 \cdot 3^4$$
+
+and so on $$\dots$$
+
+Knowing this, we can come to the solution of $$\prod\limits_{i\,=\,0}^{n-1} 3^{2^i \cdot a_i} (\text{mod } m)$$ where $$a_i$$ is the bit in the $$i^{th}$$ position of the exponent in binary form, either $$1$$ or $$0$$.
+
+Bits | 1 | 1 | 0 | 0 | 1 | 0 | 0 |
+Base | $$3^{2^6}$$ | $$3^{2^5}$$ | $$3^{2^4}$$ | $$3^{2^3}$$ | $$3^{2^2}$$ | $$3^{2^1}$$ | $$3^{2^0}$$ | 
+Base | $$3^{64}$$ | $$3^{32}$$ | $$3^{16}$$ | $$3^{8}$$ | $$3^{4}$$ | $$3^{2}$$ | $$3^{1}$$ |
+ 
+The value of `base` doubles each iteration and if the current bit is set to $$1$$ then we will multiply that to the total stored in `res`.
+
+```cpp
+long long binpow(long long base, long long exponent, long long mod) {
+    base %= mod;
+    long long res = 1;
+    while (exponent > 0) {
+        if (exponent % 2 == 1)
+            res = res * base % mod;
+        base = base * base % mod;
+        exponent /= 2;
+    }
+    return res;
+}
+```
+
+### Fibonacci Sequence
+Let's see how this can be applied to the problem of finding the $$N^{th}$$ fibonacci number.
+
+We define the fibonacci sequence as follows: 
+
+$$F_0 = 0, F_1 = 1, F_n = F_{n-1} + F_{n-2} \text{ for } n \ge 2$$
+
+which results in $$0,1,1,2,3,5,8,13,21, \dots$$
+
+#### Naive Approach
+We have our base cases for $$n = 0, n = 1$$ and the recurrence.
+```cpp
+int fib(int n) {
+    if (n <= 1) return n;
+    return fib(n-1) + fib(n-2);
+}
+```
+
+#### Dynamic Programming Approach
+Same as above, however this time we cache our values.
+```cpp
+int fib(n) {
+    if (n <= 1) return n;
+    if (cache[n] != -1) return cache[n];
+    return cache[n] = fib(n-1) + fib(n-2);
+}
+
+// another method using bottom-up DP
+int fib(n) {
+    vector<int> F(n+1, 0);
+    F[1] = 1;
+    for (int i = 2; i <= n; i++) {
+        F[i] = F[i-1] + F[i-2];
+    }
+    return F[n];
+}
+```
+
+#### Matrix Exponentation Approach
+
+From the recurrence of $$F_n = F_{n-1} + F_{n-2}$$, we can deduce
+
+$$\begin{bmatrix} F_n \\ F_{n-1}\end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}\begin{bmatrix} F_{n-1} \\ F_{n-2}\end{bmatrix}$$
+
+from the fact that
+
+$$F_n = 1 \cdot F_{n-1} + 1 \cdot F_{n-2}$$ 
+
+$$F_{n-1} = 1 \cdot F_{n-1} + 0 \cdot F_{n-2} $$
+
+as such, 
+
+$$\begin{bmatrix} F_{n-1} \\ F_{n-2}\end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}\begin{bmatrix} F_{n-2} \\ F_{n-3}\end{bmatrix}$$
+
+$$\begin{bmatrix} F_n \\ F_{n-1}\end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}\begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}\begin{bmatrix} F_{n-2} \\ F_{n-3}\end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}^2 \begin{bmatrix} F_{n-2} \\ F_{n-3}\end{bmatrix}$$
+
+Taking the matrix to the $$n^{th}$$ power
+
+$$\begin{bmatrix} F_n \\ F_{n-1}\end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}^n\begin{bmatrix} F_0 \\ F_{-1}\end{bmatrix}$$
+
+$$\begin{bmatrix} F_{n+1} \\ F_n\end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}^n\begin{bmatrix} F_1 \\ F_0\end{bmatrix}$$
+
+$$\begin{bmatrix} F_{n+1} \\ F_n\end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}^n\begin{bmatrix} 1 \\ 0\end{bmatrix}$$
+
+Suppose we wanted to find $$F_{26}$$, we take $$\begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}^{26} = \begin{bmatrix} 196\,418 & 121\,393 \\ 121\,393 & 75\,025\end{bmatrix}$$, which can be done quickly using the exponentiation method where the base is $$\begin{bmatrix} 1 & 1 \\ 1 & 0\end{bmatrix}$$. We then have $$F_{26} = 1 \cdot 121\,393 + 0 \cdot 75\,025 = 121\,393.$$
+
+```cpp
+void multiply(vector<vector<int>>& matrix, vector<vector<int>>& base) {
+    vector<vector<int>> tmp(matrix.size(), vector<int>(base[0].size(), 0));
+    for(int i = 0; i < 2; i++) {
+        for(int j = 0; j < 2; j++) {
+            for(int k = 0; k < 2; k++) {
+                tmp[i][j] = matrix[i][k] * base[k][j];
+            }
+        }
+    }
+    matrix = tmp;
+}
+
+void exponentation(int n, vector<vector<int>>& matrix, vector<vector<int>>& base) {
+    while (n > 0) {
+        if (n % 2 == 0) multiply(matrix, base);
+        multiply(base, base);
+        n /= 2;
+    }
+}
+
+int main() {
+    vector<vector<int>> matrix = { {1, 0}, {0, 1} };
+    vector<vector<int>> base = { {1, 1}, {1, 0} };
+    exponentation(n, matrix, base);
+    // F_n is in matrix[1][0]
+    return 0;
+}
+```
+
+### String Counting
+Let us consider the problem where we have the letters $$A,B,C$$ and we want to find how many words of length $$M$$ exist such that no two $$A's$$ are consecutive.
+
+An example of a large $$M$$ that we can solve for is $$10^{18}$$.
+
+Typically, we return the answer modulo some value as it can be quite large.
+
+
+#### Naive Approach
+Let's define a function $$f(\text{lastChar, curIndex})$$ which represents the number of words of length $$\text{curIndex}$$ such that the last character was one of $$\{A,B,C\}$$.
+
+The exit condition can be when the $$\text{curIndex}$$ reaches $$M$$, the max length of a word.
+```cpp
+int recur(char lastChar, int curIndex) {
+    if (curIndex == M) return 1;
+    int ans = 0;
+    // if the next character is A, only if the lastChar was not A 
+    if (lastChar != 'A') ans += recur('A', curIndex + 1) % mod;
+    // if the next character is B
+    ans += recur('B', curIndex + 1) % mod;
+    // if the next character is C
+    ans += recur('C', curIndex + 1) % mod;
+    return ans;
+}
+```
+
+#### Dynamic Programming Approach
+Similar to the naive approach, except we cache the values at each state.
+```cpp
+int recur(char lastChar, int curIndex) {
+    if (curIndex == M) return cache[lastChar][curIndex] = 1;
+    if (cache[lastChar][curIndex] != -1) return cache[lastChar][curIndex];
+    int ans = 0;
+    // if the next character is A, only if the lastChar was not A 
+    if (lastChar != 'A') ans += recur('A', curIndex + 1) % mod;
+    // if the next character is B
+    ans += recur('B', curIndex + 1) % mod;
+    // if the next character is C
+    ans += recur('C', curIndex + 1) % mod;
+    return cache[lastChar][curIndex] = ans % mod;
+}
+```
+
+#### Matrix Exponentiation Approach
+For the recurrence of this problem we have,
+
+$$f(A, i) = f(B, i-1) + f(C, i-1)$$
+
+$$f(B, i) = f(A, i-1) + f(B, i-1) + f(C, i-1)$$
+
+$$f(C, i) = f(A, i-1) + f(B, i-1) + f(C, i-1)$$
+
+The corresponding matrix,
+
+$$\begin{bmatrix} f(A, i) \\ f(B, i) \\ f(C, i)\end{bmatrix} = \begin{bmatrix} 0 & 1 & 1 \\ 1 & 1 & 1 \\ 1 & 1 & 1\end{bmatrix}\begin{bmatrix} f(A, i-1) \\ f(B, i-1) \\ f(C, i-1)\end{bmatrix}$$
+
+$$\begin{bmatrix} f(A, n) \\ f(B, n) \\ f(C, n)\end{bmatrix} = \begin{bmatrix} 0 & 1 & 1 \\ 1 & 1 & 1 \\ 1 & 1 & 1\end{bmatrix}^n\begin{bmatrix} f(A, 0) \\ f(B, 0) \\ f(C, 0)\end{bmatrix}$$
+
+$$\begin{bmatrix} f(A, n) \\ f(B, n) \\ f(C, n)\end{bmatrix} = \begin{bmatrix} 0 & 1 & 1 \\ 1 & 1 & 1 \\ 1 & 1 & 1\end{bmatrix}^n\begin{bmatrix} 1 \\ 1 \\ 1\end{bmatrix}$$
+
+```cpp
+void multiply(vector<vector<int>>& matrix, vector<vector<int>>& base) {
+    vector<vector<int>> tmp(matrix.size(), vector<int>(base[0].size(), 0));
+    for(int i = 0; i < 3; i++) {
+        for(int j = 0; j < 3; j++) {
+            for(int k = 0; k < 3; k++) {
+                tmp[i][j] = matrix[i][k] * base[k][j];
+            }
+        }
+    }
+    matrix = tmp;
+}
+
+void exponentation(int n, vector<vector<int>>& matrix, vector<vector<int>>& base) {
+    while (n > 0) {
+        if (n % 2 == 0) multiply(matrix, base);
+        multiply(base, base);
+        n /= 2;
+    }
+}
+
+int main() {
+    vector<vector<int>> matrix = { {0, 1, 1}, {1, 1, 1}, {1, 1, 1} };
+    vector<vector<int>> base = { {0, 1, 1}, {1, 1, 1}, {1, 1, 1} };
+    exponentation(n, matrix, base);
+    // answer is in matrix[0][0]
+    return 0;
+}
+```
+
+### Other Problems
+
+Some other problems that can be solved using matrix exponentation include:
+
+* [Wesley's Anger Contest 5 Problem 5 - A Squirrel's Life](https://dmoj.ca/problem/wac5p5)
+* [Double Doors Regional P6 - Tudor Learns More DDR](https://dmoj.ca/problem/ddrp6)
+* [DMOPC '20 Contest 1 P4 - Victor Makes Bank](https://dmoj.ca/problem/dmopc20c1p4)
+* [DMOPC '19 Contest 7 P4 - Bob and Continued Fractions](https://dmoj.ca/problem/dmopc19c7p4)
+
+Inspiration for this post can be found [here](https://drive.google.com/file/d/1nhL63QcjUiRm1pGGmzi1QHceKAGeBsRY/view).

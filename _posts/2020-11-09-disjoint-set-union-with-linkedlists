@@ -1,0 +1,122 @@
+---
+layout: post
+title: 'Disjoint Set Union with LinkedLists'
+tags: [algorithms]
+---
+
+This post aims to cover the implementation behind Disjoint Set Union (DSU) using LinkedLists in order to achieve **Find** in $$O(1)$$ and **Union** in $$O(min(\text{setSize}[a], \text{setSize}[b]))$$ which tends to $$O(log(N))$$.
+
+### Node Class
+
+```cpp
+class Node {
+    int val, size;
+    Node *next, *head, *tail;
+    Node(int val) : val(val), size(1), next(nullptr), head(nullptr), tail(nullptr);
+}
+```
+
+<!-- more -->
+
+- val : stores the label of the node
+- size : size of the set
+- next : pointer to the next node in the LinkedList
+- head : pointer to the head of the set
+- tail : pointer to the tail of the set
+
+#### Size
+The size of the set is kept track of by the head pointer of any node in order to know the size of its set. For two sets being merged, it is only necessary to traverse the smaller set to merge the two sets, which will be explained below.
+#### Next
+Each node has a next property so that traversing the LinkedList of the nodes is possible.
+#### Head
+The value at the head of each node will be the representative of each set.
+#### Tail
+The tail of the set is required in order to be able to traverse the entire set of the smaller set being merged. Suppose a set containing a node is to be merged with another set, but the node of the smaller set is not the last one in the LinkedList. It is required to update each node in the LinkedList, so keeping track of the last node in the LinkedList (the tail) will be useful.
+
+### Important Note
+After sets are merged the only conditions that will hold true for the nodes in the set are:
+- The head of each node will point to the representative of the set
+- The value of each node will remain the same (as it is never changed) 
+- The head is guaranteed to have the correct size of the set and tail pointer
+
+This is because when the smaller set is merged with the larger set, the nodes in the larger set are not iterated through, this way we can maintain **Union** in $$O(min(\text{setSize}[a], \text{setSize}[b]))$$.
+
+### DSU Class
+```cpp
+class DSU {
+    int n;
+    Node** nodeList;
+    DSU(int n) : n(n) {
+        nodeList = new Node*[n];
+        for (int i = 0; i < n; i++) {
+            Node* nd = new Node(i);
+            nd->head = nd;
+            nd->tail = nd;
+            nodeList[i] = nd;
+        }
+    }
+    int Find(int nd) return nodeList[nd]->head->val;
+    void Union(int a, int b) {
+        int parA = Find(a);
+        int parB = Find(b);
+        if (parA == parB) return;
+        Node* larger_hd = nodeList[a]->head;
+        Node* larger_tl = nodeList[a]->head->tail;
+        Node* smaller_hd = nodeList[b]->head;
+        Node* smaller_tl = nodeList[b]->head->tail;
+
+        if (larger_hd->size < smaller_hd->size) {
+            std::swap(larger_hd, smaller_hd);
+            std::swap(larger_tl, smaller_tl);
+        }
+        larger_hd->size = larger_hd->size + smaller_hd->size;
+        larger_hd->tail = smaller_tl;
+        smaller_hd->next = larger_tl;
+        while (smaller_tl->val != larger_tl->val) {
+            smaller_tl->head = larger_hd;
+            smaller_tl = smaller_tl->next;
+        }
+    }
+}
+```
+
+#### The Constructor
+The DSU is first setup by having each node be its own set, meaning the head and tail of the node should point back to itself.
+#### Find
+Maintaining the fact that the head pointer is the representative of the set, **Find** can be done in $$O(1)$$ by returning the value of the head of the node whose set representative we want to determine.
+#### Union
+We first check for whether the two nodes are already in the same set. Which is done by simply comparing the value of **Find** for both nodes.
+```cpp
+    int parA = Find(a);
+    int parB = Find(b);
+    if (parA == parB) return;
+```
+If the two nodes are not in the same set, then they need to be merged. We keep track of the head and tail of both the larger and smaller sets.
+
+Recall, the conditions that must be maintained mentionned above
+
+- The head is guaranteed to have the correct size of the set and tail pointer
+
+We achieve this by updating the size of the head of the larger set to increase by the size of the smaller set.
+```cpp
+larger_hd->size = larger_hd->size + smaller_hd->size;
+larger_hd->tail = smaller_tl;
+```
+
+- The head of each node will point to the representative of the set
+
+We iterate through the smaller set from the tail and set the head of each node in the smaller set to be the head of the larger set.
+```cpp
+while (smaller_tl->val != larger_tl->val) {
+    smaller_tl->head = larger_hd;
+    smaller_tl = smaller_tl->next;
+}
+```
+
+We must also point the next node of the head of the smaller set to be the tail of the larger set so that the entire set can be traversed if it is the smaller set of a future merge.
+```cpp
+smaller_hd->next = larger_tl;
+```
+
+
+For other uses and implementations for a DSU refer to [here](https://cp-algorithms.com/data_structures/disjoint_set_union.html).

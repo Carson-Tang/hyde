@@ -1,16 +1,16 @@
 # Dependencies
-markdown:         redcarpet
-highlighter:      pygments
+markdown:         kramdown
+#highlighter:      pygments
 
 # Permalinks
 permalink:        pretty
-relative_permalinks: true
+# relative_permalinks: true
 
 # Setup
-title:            Hyde
+title:            Carson Tang
 tagline:          'A Jekyll theme'
-description:      'A brazen two-column <a href="http://jekyllrb.com" target="_blank">Jekyll</a> theme that pairs a prominent sidebar with uncomplicated content. Made by <a href="https://twitter.com/mdo" target="_blank">@mdo</a>.'
-url:              http://hyde.getpoole.com
+description:      'Computer Engineering @ University of Waterloo'
+url:              https://carsonkstang.me
 baseurl:          /
 
 author:
@@ -23,4 +23,11 @@ paginate:         5
 version:          2.1.0
 
 github:
-  repo:           https://github.com/poole/hyde
+  repo:           https://github.com/Carson-Tang
+email:            mailto:carson.tang@uwaterloo.ca
+linkedin:         https://linkedin.com/in/carson-tang
+
+plugins:
+  - jekyll-paginate
+  - jekyll-gist
+  - redcarpet
